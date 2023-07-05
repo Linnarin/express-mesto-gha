@@ -4,7 +4,15 @@ const mongoose = require('mongoose');
 
 const app = express();
 
-const router = require('./routes/index');
+const router = express.Router();
+const usersRouter = require('./routes/users');
+const cardsRouter = require('./routes/cards');
+
+router.use('/users', usersRouter);
+router.use('/cards', cardsRouter);
+router.use('/*', (req, res) => {
+  res.status(404).send({ message: 'Страница не найдена' });
+});
 
 mongoose.connect('mongodb://127.0.0.1:27017/mestodb');
 
