@@ -1,6 +1,7 @@
 const express = require('express');
 const { auth } = require('../middlewares/auth');
-const validation = require('../middlewares/validation');
+const celebrate = require('../middlewares/celebrate');
+const NotFound = require('../utils/NotFound');
 
 const router = express.Router();
 
@@ -11,8 +12,8 @@ const {
 const usersRouter = require('./users');
 const cardsRouter = require('./cards');
 
-router.use('/signin', validation.validateCreateAndLoginUser, login);
-router.use('/signup', validation.validateCreateAndLoginUser, createUser);
+router.use('/signin', celebrate.validateCreateAndLoginUser, login);
+router.use('/signup', celebrate.validateCreateAndLoginUser, createUser);
 
 router.use(auth);
 
@@ -20,8 +21,8 @@ router.use('/users', usersRouter);
 
 router.use('/cards', cardsRouter);
 
-router.use('/*', (req, res) => {
-  res.status(404).send({ message: 'Страницы не существует' });
+router.use('/*', (req, res, next) => {
+  next(new NotFound('Страница не найдена'));
 });
 
 module.exports = router;
