@@ -1,19 +1,21 @@
 const jwt = require('jsonwebtoken');
-
-// достаем секретный ключ в отдельной env переменной, либо альтернативный, если нет .env
-const { JWT_SECRET = 'test-secret' } = process.env;
+const UnauthorizedError = require('../utils/UnauthorizedError');
 
 const auth = (req, res, next) => {
   const token = req.cookies.jwt;
   let payload;
-  try {
-    // секретный ключ — перенесли в .env
-    payload = jwt.verify(token, JWT_SECRET);
-  } catch (err) {
-    res.status(401).send({ message: err.message });
+  if (!token) {
+    next(new UnauthorizedError('Неверный логин или пароль'));
   }
+  try {
+    payload = jwt.verify(token, 'super_strong_password');
+  } catch (err) {
+    next(new UnauthorizedError('Неверный логин или пароль'));
+  }
+
   req.user = payload;
-  next();
+
+  return next();
 };
 
 module.exports = { auth };

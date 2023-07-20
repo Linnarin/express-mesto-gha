@@ -1,69 +1,53 @@
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const User = require('../models/user');
-// достаем секретный ключ в отдельной env переменной, либо альтернативный, если нет .env
-const { JWT_SECRET = 'test-secret' } = process.env;
 
-// контроллер аутентификации
-const login = (req, res, next) => {
-  const { email, password } = req.body;
-  User.findOne({ email })
-    .orFail(() => new Error('NotData'))
-    // если email существует в базе —> пользователь в переменной user
-    .then((user) => {
-      // проверяем пароль
-      bcrypt.compare(password, user.password)
-        .then((isValidUser) => {
-          if (isValidUser) {
-            // если валидный пароль —> создадим jwt токен на 7 дней
-            const token = jwt.sign(
-              { _id: user._id },
-              // секретный ключ — перенесли в .env
-              JWT_SECRET,
-              // токен на 7 дней
-              { expiresIn: '7d' },
-            );
-            // записываем токен в httpOnly кук —> отправляем на фронт пользователя
-            res.status(200).cookie('jwt', token, { maxAge: 3600000 * 24 * 7, httpOnly: true, sameSite: true }).send(user);
-          } else {
-            // res.status(403).send({ message: 'Введены некорректные данные' });
-            next(new Error('NotData'));
-          }
-        });
-    })
-    .catch(next);
-};
+const SALT_ROUNDS = 10;
 
-// создаем пользователя
+const JWT_SECRET = 'super_strong_password';
+
+const BadRequestError = require('../utils/BadRequestError');
+
+const ConflictingError = require('../utils/ConflictingError');
+
+const NotFoundError = require('../utils/NotFoundError');
+
+const UnauthorizedError = require('../utils/UnauthorizedError');
+
 const createUser = (req, res, next) => {
-  const {
-    name,
-    about,
-    avatar,
-    email,
-    password,
-  } = req.body;
-  // проверяем, заполнены ли поля создания пользователя
-  if (!email || !password) {
-    res.status(400).send({ message: 'Обязательные поля не заполнены' });
-    return;
-  }
-  // хэшируем пароль
-  bcrypt.hash(password, 10)
-    .then((hash) => User.create({
-      email,
+  const { password } = req.body;
+
+  bcrypt.hash(password, SALT_ROUNDS).then((hash) => {
+    User.create({
+      ...req.body,
       password: hash,
-      name,
-      about,
-      avatar,
-    }))
-    .then((user) => {
-      res.status(201).send(user);
     })
-    .catch(next);
+      .then((user) => {
+        const {
+          _id, name, about, avatar, email,
+        } = user;
+        res.send({
+          _id, name, about, avatar, email,
+        });
+      })
+      .catch((err) => {
+        if (err.name === 'ValidationError') {
+          next(
+            new BadRequestError(
+              'Переданы некорректные данные при создании пользователя',
+            ),
+          );
+        } else if (err.code === 11000) {
+          next(
+            new ConflictingError('Пользователь с таким email уже существует'),
+          );
+        } else {
+          next(err);
+        }
+      });
+  });
 };
 
-// запрашиваем список всех пользователей
 const getUsers = (req, res, next) => {
   User.find({})
     .then((users) => {
@@ -72,48 +56,82 @@ const getUsers = (req, res, next) => {
     .catch(next);
 };
 
-// заправшиваем авторизированного пользователя
-const getAuthUser = (req, res, next) => {
-  const id = req.user._id;
-  User.findById(id)
-    .orFail(() => Error('NotValidId'))
-    .then((user) => {
-      res.send(user);
-    })
-    .catch(next);
-};
-
-// запрашиваем пользователя по id
 const getUser = (req, res, next) => {
-  const { id } = req.params;
-  User.findById(id)
-    .orFail(() => Error('NotValidId'))
+  const userId = req.params.id ? req.params.id : req.user._id;
+
+  User.findById(userId)
+    .orFail(new NotFoundError('Пользователь по указанному id не найден'))
     .then((user) => {
       res.send(user);
     })
-    .catch(next);
+    .catch((err) => {
+      if (err.name === 'CastError') {
+        next(
+          new BadRequestError('Переданы некорректные данные при поиске пользователя по id'),
+        );
+      } else {
+        next(err);
+      }
+    });
 };
 
-// обновляем данные пользователя
+const updateUserData = (Name, data, req, res, next) => {
+  Name.findByIdAndUpdate(req.user._id, data, { new: true, runValidators: true })
+    .then((user) => {
+      res.send(user);
+    })
+    .catch((err) => {
+      if (err.name === 'ValidationError') {
+        next(
+          new BadRequestError(
+            'Переданы некорректные данные при обновлении профиля',
+          ),
+        );
+      } else {
+        next(err);
+      }
+    });
+};
+
 const updateUser = (req, res, next) => {
-  const id = req.user._id;
   const { name, about } = req.body;
-  User.findByIdAndUpdate(id, { name, about }, { new: true, runValidators: true })
-    .orFail(() => Error('NotValidId'))
-    .then((user) => {
-      res.send(user);
-    })
-    .catch(next);
+  updateUserData(User, { name, about }, req, res, next);
 };
 
-// обновляем аватар пользователя
-const updateAvatar = (req, res, next) => {
-  const id = req.user._id;
+const updateUsersAvatar = (req, res, next) => {
   const { avatar } = req.body;
-  User.findByIdAndUpdate(id, { avatar }, { new: true })
-    .orFail(() => Error('NotValidId'))
+  updateUserData(User, { avatar }, req, res, next);
+};
+
+const login = (req, res, next) => {
+  const { email, password } = req.body;
+  User.findOne({ email })
+    .select('+password')
     .then((user) => {
-      res.send(user);
+      if (!user) {
+        throw new UnauthorizedError('Неверный логин или пароль');
+      } else {
+        return bcrypt
+          .compare(password, user.password)
+          .then((isValidUser) => {
+            if (isValidUser) {
+              const token = jwt.sign({ _id: user._id }, JWT_SECRET);
+              res.cookie('jwt', token, {
+                maxAge: 3600 * 24 * 7,
+                httpOnly: true,
+              });
+              const {
+                _id, name, about, avatar,
+              } = user;
+              res.send({
+                _id, name, about, avatar, email,
+              });
+            } else {
+              throw new UnauthorizedError('Неверный логин или пароль');
+            }
+          })
+          .catch(next);
+      }
     })
     .catch(next);
 };
@@ -121,9 +139,8 @@ const updateAvatar = (req, res, next) => {
 module.exports = {
   createUser,
   getUsers,
-  getAuthUser,
   getUser,
   updateUser,
-  updateAvatar,
+  updateUsersAvatar,
   login,
 };

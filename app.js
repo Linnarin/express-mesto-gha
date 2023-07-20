@@ -4,9 +4,9 @@ const mongoose = require('mongoose');
 
 const app = express();
 
-const cookieParser = require('cookie-parser');
-
 const { errors } = require('celebrate');
+
+const cookieParser = require('cookie-parser');
 
 const router = require('./routes/index');
 
