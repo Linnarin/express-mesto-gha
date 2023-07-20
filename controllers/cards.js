@@ -52,7 +52,7 @@ const deleteCard = (req, res, next) => {
     .catch(next);
 };
 
-const putLikeCard = (req, res, next) => {
+const likeCard = (req, res, next) => {
   const { cardId } = req.params;
 
   Card.findByIdAndUpdate(
@@ -103,6 +103,6 @@ module.exports = {
   createCard,
   getCards,
   deleteCard,
-  putLikeCard,
+  likeCard,
   deleteLikeCard,
 };
