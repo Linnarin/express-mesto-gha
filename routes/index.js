@@ -12,8 +12,8 @@ const {
 const usersRouter = require('./users');
 const cardsRouter = require('./cards');
 
-router.use('/signin', validation.validateCreateAndLoginUser, login);
 router.use('/signup', validation.validateCreateAndLoginUser, createUser);
+router.use('/signin', validation.validateCreateAndLoginUser, login);
 
 router.use(auth);
 

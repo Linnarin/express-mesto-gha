@@ -8,11 +8,11 @@ const JWT_SECRET = 'strong_password';
 
 const BadRequest = require('../utils/BadRequest');
 
-const ConflictingError = require('../utils/ConflictingError');
+const ConflictError = require('../utils/ConflictError');
 
 const NotFound = require('../utils/NotFound');
 
-const UnauthorizedError = require('../utils/UnauthorizedError');
+const AuthError = require('../utils/AuthError');
 
 const login = (req, res, next) => {
   const { email, password } = req.body;
@@ -20,7 +20,7 @@ const login = (req, res, next) => {
     .select('+password')
     .then((user) => {
       if (!user) {
-        throw new UnauthorizedError('Неверный логин или пароль');
+        throw new AuthError('Неверный логин или пароль');
       } else {
         return bcrypt
           .compare(password, user.password)
@@ -38,7 +38,7 @@ const login = (req, res, next) => {
                 _id, name, about, avatar, email,
               });
             } else {
-              throw new UnauthorizedError('Неверный логин или пароль');
+              throw new AuthError('Неверный логин или пароль');
             }
           })
           .catch(next);
@@ -72,7 +72,7 @@ const createUser = (req, res, next) => {
           );
         } else if (err.code === 11000) {
           next(
-            new ConflictingError('Пользователь с таким email уже существует'),
+            new ConflictError('Пользователь с таким email уже существует'),
           );
         } else {
           next(err);
@@ -91,14 +91,14 @@ const getCurrentUser = (req, res, next) => {
   const userId = req.params.id ? req.params.id : req.user._id;
 
   User.findById(userId)
-    .orFail(new NotFound('Пользователь по указанному id не найден'))
+    .orFail(new NotFound('Пользователь не найден'))
     .then((user) => {
       res.send(user);
     })
     .catch((err) => {
       if (err.name === 'CastError') {
         next(
-          new BadRequest('Переданы некорректные данные при поиске пользователя по id'),
+          new BadRequest('Переданы некорректные данные пользователя'),
         );
       } else {
         next(err);
