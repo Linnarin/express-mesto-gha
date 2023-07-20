@@ -14,6 +14,39 @@ const NotFound = require('../utils/NotFound');
 
 const UnauthorizedError = require('../utils/UnauthorizedError');
 
+const login = (req, res, next) => {
+  const { email, password } = req.body;
+  User.findOne({ email })
+    .select('+password')
+    .then((user) => {
+      if (!user) {
+        throw new UnauthorizedError('Неверный логин или пароль');
+      } else {
+        return bcrypt
+          .compare(password, user.password)
+          .then((isValidUser) => {
+            if (isValidUser) {
+              const token = jwt.sign({ _id: user._id }, JWT_SECRET);
+              res.cookie('jwt', token, {
+                maxAge: 3600 * 24 * 7,
+                httpOnly: true,
+              });
+              const {
+                _id, name, about, avatar,
+              } = user;
+              res.send({
+                _id, name, about, avatar, email,
+              });
+            } else {
+              throw new UnauthorizedError('Неверный логин или пароль');
+            }
+          })
+          .catch(next);
+      }
+    })
+    .catch(next);
+};
+
 const createUser = (req, res, next) => {
   const { password } = req.body;
 
@@ -50,9 +83,7 @@ const createUser = (req, res, next) => {
 
 const getUsers = (req, res, next) => {
   User.find({})
-    .then((users) => {
-      res.send(users);
-    })
+    .then((users) => res.status(200).send(users))
     .catch(next);
 };
 
@@ -101,39 +132,6 @@ const updateUser = (req, res, next) => {
 const updateUsersAvatar = (req, res, next) => {
   const { avatar } = req.body;
   updateUserData(User, { avatar }, req, res, next);
-};
-
-const login = (req, res, next) => {
-  const { email, password } = req.body;
-  User.findOne({ email })
-    .select('+password')
-    .then((user) => {
-      if (!user) {
-        throw new UnauthorizedError('Неверный логин или пароль');
-      } else {
-        return bcrypt
-          .compare(password, user.password)
-          .then((isValidUser) => {
-            if (isValidUser) {
-              const token = jwt.sign({ _id: user._id }, JWT_SECRET);
-              res.cookie('jwt', token, {
-                maxAge: 3600 * 24 * 7,
-                httpOnly: true,
-              });
-              const {
-                _id, name, about, avatar,
-              } = user;
-              res.send({
-                _id, name, about, avatar, email,
-              });
-            } else {
-              throw new UnauthorizedError('Неверный логин или пароль');
-            }
-          })
-          .catch(next);
-      }
-    })
-    .catch(next);
 };
 
 module.exports = {
