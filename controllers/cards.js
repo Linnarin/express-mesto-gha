@@ -2,8 +2,9 @@ const Card = require('../models/card');
 
 const createCard = (req, res, next) => {
   const { name, link } = req.body;
-  const owner = req.user._id;
+  const owner = req.user._id;// id пользователя
 
+  // проверяем, заполнены ли поля карточки
   if (!name || !link) {
     res.status(400).send({ message: 'Обязательные поля не заполнены' });
     return;
@@ -29,6 +30,8 @@ const deleteCard = (req, res, next) => {
   Card.findById(id)
     .orFail(() => Error('NotValidId'))
     .then((card) => {
+      // карточка пользователя?
+      // нет - удаление невозможно
       if (req.user._id !== card.owner.toString()) {
         res.status(403).send({ message: 'У вас нет прав на удалениие данной карточки' });
       } else {
