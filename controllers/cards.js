@@ -6,6 +6,12 @@ const ForbiddenError = require('../utils/ForbiddenError');
 
 const NotFound = require('../utils/NotFound');
 
+const getCards = (req, res, next) => {
+  Card.find({})
+    .then((cards) => res.status(200).send(cards))
+    .catch(next);
+};
+
 const createCard = (req, res, next) => {
   const { name, link } = req.body;
 
@@ -28,14 +34,6 @@ const createCard = (req, res, next) => {
         next(err);
       }
     });
-};
-
-const getCards = (req, res, next) => {
-  Card.find({})
-    .then((cards) => {
-      res.send(cards);
-    })
-    .catch(next);
 };
 
 const deleteCard = (req, res, next) => {
