@@ -6,12 +6,12 @@ const {
   getUsers, getCurrentUser, updateUser, updateUsersAvatar,
 } = require('../controllers/users');
 
-const celebrate = require('../middlewares/celebrate');
+const validation = require('../middlewares/validation');
 
 router.get('/', getUsers);
 router.get('/me', getCurrentUser);
-router.get('/:id', celebrate.validateUserId, getCurrentUser);
-router.patch('/me', celebrate.validateUpdateUser, updateUser);
-router.patch('/me/avatar', celebrate.validateUserAvatar, updateUsersAvatar);
+router.get('/:id', validation.validateUserId, getCurrentUser);
+router.patch('/me', validation.validateUpdateUser, updateUser);
+router.patch('/me/avatar', validation.validateUserAvatar, updateUsersAvatar);
 
 module.exports = router;
