@@ -29,6 +29,4 @@ app.use(router);
 
 app.use(errors());
 app.use(error);
-app.listen(3000, () => {
-  console.log('Сервер запущен!');
-});
+app.listen(3000);
