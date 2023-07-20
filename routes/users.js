@@ -3,7 +3,10 @@ const express = require('express');
 const router = express.Router();
 
 const {
-  getUsers, getCurrentUser, updateUser, updateUsersAvatar,
+  getUsers,
+  getCurrentUser,
+  updateUser,
+  updateUsersAvatar,
 } = require('../controllers/users');
 
 const validation = require('../middlewares/validation');
