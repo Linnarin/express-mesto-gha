@@ -1,6 +1,6 @@
 const express = require('express');
 const { auth } = require('../middlewares/auth');
-const validator = require('../middlewares/validator');
+const validation = require('../middlewares/validation');
 
 const router = express.Router();
 
@@ -11,8 +11,8 @@ const {
 const usersRouter = require('./users');
 const cardsRouter = require('./cards');
 
-router.use('/signin', validator.validateCreateAndLoginUser, login);
-router.use('/signup', validator.validateCreateAndLoginUser, createUser);
+router.use('/signin', validation.validateCreateAndLoginUser, login);
+router.use('/signup', validation.validateCreateAndLoginUser, createUser);
 
 router.use(auth);
 
