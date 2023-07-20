@@ -1,120 +1,73 @@
 const Card = require('../models/card');
 
-const ERROR_INACCURATE_DATA = 400;
-const ERROR_NOT_FOUND = 404;
-const ERROR_INTERNAL_SERVER = 500;
+const createCard = (req, res, next) => {
+  const { name, link } = req.body;
+  const owner = req.user._id;
 
-const createCard = (req, res) => {
-  const {
-    name, link,
-  } = req.body;
-
-  Card.create({
-    name, link, owner: req.user._id,
-  })
+  if (!name || !link) {
+    res.status(400).send({ message: 'Обязательные поля не заполнены' });
+    return;
+  }
+  Card.create({ name, link, owner })
     .then((card) => {
-      res.send(card);
+      res.status(201).send(card);
     })
-    .catch((err) => {
-      if (err.name === 'ValidationError') {
-        res.status(ERROR_INACCURATE_DATA).send({
-          message: 'Переданы некорректные данные при создании карточки',
-        });
-      } else {
-        res.status(ERROR_INTERNAL_SERVER).send({
-          message: 'Произошла ошибка',
-        });
-      }
-    });
+    .catch(next);
 };
 
-const getCards = (req, res) => {
+const getCards = (req, res, next) => {
   Card.find({})
-    .then((cards) => {
-      res.send(cards);
-    })
-    .catch(() => {
-      res.status(ERROR_INTERNAL_SERVER).send({
-        message: 'Произошла ошибка',
-      });
-    });
-};
-
-const deleteCard = (req, res) => {
-  const { cardid } = req.params;
-  Card.findByIdAndRemove(cardid)
-    .orFail(() => new Error('Not Found'))
+    .populate('owner')
     .then((card) => {
       res.send(card);
     })
-    .catch((err) => {
-      if (err.name === 'CastError') {
-        res
-          .status(ERROR_INACCURATE_DATA)
-          .send({
-            message: 'Переданы некорректные данные при удалении карточки',
-          });
-      } else if (err.message === 'Not Found') {
-        res.status(ERROR_NOT_FOUND).send({ message: 'Карточка не найдена' });
-      } else {
-        res.status(ERROR_INTERNAL_SERVER).send({ message: 'Произошла ошибка' });
-      }
-    });
+    .catch(next);
 };
 
-const putLikeCard = (req, res) => {
-  const { cardId } = req.params;
-
-  Card.findByIdAndUpdate(cardId, { $addToSet: { likes: req.user._id } }, { new: true })
-    .orFail(() => new Error('Not Found'))
-    .then((cards) => {
-      res.send(cards);
-    })
-    .catch((err) => {
-      if (err.name === 'CastError') {
-        res
-          .status(ERROR_INACCURATE_DATA)
-          .send({
-            message: 'Переданы некорректные данные для добавления лайка',
-          });
-      } else if (err.message === 'Not Found') {
-        res
-          .status(ERROR_NOT_FOUND)
-          .send({ message: 'id карточки не найден' });
+const deleteCard = (req, res, next) => {
+  const { id } = req.params;
+  Card.findById(id)
+    .orFail(() => Error('NotValidId'))
+    .then((card) => {
+      if (req.user._id !== card.owner.toString()) {
+        res.status(403).send({ message: 'У вас нет прав на удалениие данной карточки' });
       } else {
-        res.status(ERROR_INTERNAL_SERVER).send({ message: 'Произошла ошибка' });
+        // если да, то удаляем карточку
+        Card.findByIdAndRemove(id)
+          .then(() => {
+            res.send({ message: 'Карточка успешно удалена' });
+          });
       }
-    });
+    })
+    .catch(next);
 };
 
-const deleteLikeCard = (req, res) => {
-  const { cardId } = req.params;
-  Card.findByIdAndUpdate(cardId, { $pull: { likes: req.user._id } }, { new: true })
-    .orFail(() => new Error('Not Found'))
-    .then((cards) => {
-      res.send(cards);
+const likeCard = (req, res, next) => {
+  const { id } = req.params;
+  const idUser = req.user._id;
+  Card.findByIdAndUpdate(id, { $addToSet: { likes: idUser } }, { new: true })
+    .orFail(() => Error('NotValidId'))
+    .then((card) => {
+      res.send(card);
     })
-    .catch((err) => {
-      if (err.name === 'CastError') {
-        res
-          .status(ERROR_INACCURATE_DATA)
-          .send({
-            message: 'Переданы некорректные данные для добавления лайка',
-          });
-      } else if (err.message === 'Not Found') {
-        res
-          .status(ERROR_NOT_FOUND)
-          .send({ message: 'id карточки не найден' });
-      } else {
-        res.status(ERROR_INTERNAL_SERVER).send({ message: 'Произошла ошибка' });
-      }
-    });
+    .catch(next);
+};
+
+const deleteLikeCard = (req, res, next) => {
+  const { id } = req.params;
+  const idUser = req.user._id;
+  Card.findByIdAndUpdate(id, { $pull: { likes: idUser } }, { new: true })
+    .orFail(() => Error('NotValidId'))
+    .then((card) => {
+      res.send(card);
+    })
+    .catch(next);
 };
 
 module.exports = {
   createCard,
   getCards,
   deleteCard,
-  putLikeCard,
+  likeCard,
   deleteLikeCard,
 };
