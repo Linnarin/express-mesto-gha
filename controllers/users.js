@@ -48,28 +48,6 @@ const login = (req, res, next) => {
 };
 
 const createUser = (req, res, next) => {
-  const {
-    name, about, avatar, email,
-  } = req.body;
-  bcrypt.hash(req.body.password, SALT_ROUNDS)
-    .then((hash) => {
-      User.create({
-        name, about, avatar, email, password: hash,
-      });
-    })
-    .then((user) => res.status(201).send(user))
-    .catch((err) => {
-      if (err.name === 'ValidationError') {
-        throw new BadRequest('Переданы некорректные данные при создании пользователя');
-      } else if (err.code === 11000) {
-        throw new ConflictError('Пользователь с таким email уже существует');
-      }
-    })
-    .catch(next);
-};
-
-/*
-const createUser = (req, res, next) => {
   const { password } = req.body;
 
   bcrypt.hash(password, SALT_ROUNDS).then((hash) => {
@@ -102,7 +80,7 @@ const createUser = (req, res, next) => {
       });
   });
 };
-*/
+
 const getUsers = (req, res, next) => {
   User.find({})
     .then((users) => res.status(200).send(users))
