@@ -59,7 +59,7 @@ const createUser = (req, res, next) => {
         const {
           _id, name, about, avatar, email,
         } = user;
-        res.send({
+        res.status(201).send({
           _id, name, about, avatar, email,
         });
       })
